@@ -1,0 +1,33 @@
+[Unit]
+Description=MyIPDNS Go API Server
+After=network.target
+
+[Service]
+# 安全性：使用 www-data 用户运行，不要用 root
+User=www-data
+Group=www-data
+
+# 路径配置 (请修改为您实际的部署路径)
+WorkingDirectory=/opt/myipdns-go-api
+ExecStart=/opt/myipdns-go-api/myip-api \
+    -port=8080 \
+    -city-db=/usr/share/GeoIP/GeoLite2-City.mmdb \
+    -asn-db=/usr/share/GeoIP/GeoLite2-ASN.mmdb \
+    -isp-dict=data/isp_zh.json
+
+# 环境变量 (可选，如果不想用命令行参数)
+# Environment="PORT=8080"
+
+# 崩溃重启策略
+Restart=always
+RestartSec=3
+
+# 资源限制 (保护 1GB 内存不被耗尽)
+# 限制最大内存使用 500M (根据实际情况调整)
+MemoryMax=500M
+
+# 限制打开文件句柄数 (高并发必需)
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
