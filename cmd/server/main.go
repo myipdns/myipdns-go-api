@@ -6,7 +6,7 @@ import (
 	"myipdns-go-api/internal/geo"
 	"myipdns-go-api/internal/isp"
 	"myipdns-go-api/internal/middleware"
-	"net" // [新增] 用于校验 IP 格式
+	"net"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -33,7 +33,7 @@ func main() {
 
 	// 3. 初始化 Fiber App
 	app := fiber.New(fiber.Config{
-		AppName:               "MyIPDNS API/1.1", 
+		AppName:               "MyIPDNS API/1.2",
 		DisableStartupMessage: false,
 		Immutable:             false,
 		ReadTimeout:           5 * time.Second,
@@ -52,26 +52,18 @@ func main() {
 
 	// 4. 核心路由处理逻辑
 	handler := func(c *fiber.Ctx) error {
-		// 获取连接者的真实 IP (来自中间件)
 		clientIP := c.Locals(middleware.CtxClientIP).(string)
 		mode := c.Locals(middleware.CtxMode).(string)
 
-		// === 分支 A: 极简模式 (直连域名) ===
-		// 直连域名 (v4/v6) 通常只返回当前连接 IP，不支持查询别人
-		// 这样可以防止恶意用户利用直连通道进行大规模爬取
+		// 极简模式：直接返回 IP
 		if mode == "simple" {
 			return c.SendString(clientIP)
 		}
 
-		// === 分支 B: 完整模式 (主域名 CDN) ===
-		
-		// [新增功能] 支持 ?ip=x.x.x.x 查询指定 IP
-		// 默认查询目标是当前连接者
+		// 完整模式：支持查询指定 IP
 		targetIP := clientIP
-		
 		queryIP := c.Query("ip")
 		if queryIP != "" {
-			// 如果指定了 ip 参数，校验格式
 			if net.ParseIP(queryIP) == nil {
 				return c.Status(400).JSON(fiber.Map{
 					"error": "invalid_ip_format",
@@ -81,34 +73,29 @@ func main() {
 			targetIP = queryIP
 		}
 
-	
-// 我们直接把参数传给 geoProvider，让它去处理映射和回退
-lang := c.Query("lang", "en")
+		// 获取语言参数 (不再限制只能是 en/cn，支持 ru/jp 等)
+		lang := c.Query("lang", "en")
 
-		// 1. 查 MaxMind 库 (查询 targetIP)
+		// 1. 查 MaxMind 库 (多语言逻辑在 Provider 内部处理)
 		result, err := geoProvider.Lookup(targetIP, lang)
 		if err != nil {
 			return c.JSON(fiber.Map{"ip": targetIP, "error": "geo_lookup_failed"})
 		}
 
-		if lang == "cn" || lang == "zh" {
-    if result.ISP != "" {
-        result.ISP = ispTrans.Translate(result.ISP, "cn")
-    }
-}
+		// 2. 翻译 ISP (仅在中文模式下生效，因为我们只有中文 ISP 字典)
+		if lang == "cn" || lang == "zh" || lang == "zh-CN" {
+			if result.ISP != "" {
+				result.ISP = ispTrans.Translate(result.ISP, "cn")
+			}
+		}
 
-		// 3. 设置缓存头
 		c.Set("Cache-Control", "public, max-age=3600")
-
-		// 4. 返回结果
 		return c.JSON(result)
 	}
 
-	// 注册路由
 	app.Get("/", handler)
 	app.Get("/ip", handler)
 
-	// 5. 启动服务器
 	log.Printf("Starting server on port %s...", cfg.Port)
 	if err := app.Listen(":" + cfg.Port); err != nil {
 		log.Fatalf("Server shutdown: %v", err)

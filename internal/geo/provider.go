@@ -15,19 +15,18 @@ type Provider struct {
 
 // Result 定义标准的返回结构
 type Result struct {
-	IP          string `json:"ip"`
-	CountryCode string `json:"country_code"`
-	Country     string `json:"country"`
-	Region      string `json:"region"`
-	City        string `json:"city"`
+	IP          string  `json:"ip"`
+	CountryCode string  `json:"country_code"`
+	Country     string  `json:"country"`
+	Region      string  `json:"region"`
+	City        string  `json:"city"`
 	Latitude    float64 `json:"latitude"`
 	Longitude   float64 `json:"longitude"`
-	ASN         uint   `json:"asn,omitempty"`
-	ISP         string `json:"isp,omitempty"`
+	ASN         uint    `json:"asn,omitempty"`
+	ISP         string  `json:"isp,omitempty"`
 }
 
 // NewProvider 初始化数据库
-// 使用 mmap 模式，对 1GB VPS 非常友好
 func NewProvider(cityPath, asnPath string) (*Provider, error) {
 	p := &Provider{}
 
@@ -39,7 +38,6 @@ func NewProvider(cityPath, asnPath string) (*Provider, error) {
 
 	p.asnReader, err = geoip2.Open(asnPath)
 	if err != nil {
-		// ASN 库是可选的，如果打开失败，只记录日志不中断程序
 		log.Printf("[Warning] Failed to open ASN DB: %v. ISP info will be missing.", err)
 	}
 
@@ -62,15 +60,15 @@ func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 	res := &Result{IP: ipStr}
 
 	// 1. 语言映射：将用户输入的简写映射为 MaxMind 的 Key
-	// 默认为英文
+	// MaxMind 支持: de, en, es, fr, ja, pt-BR, ru, zh-CN
 	mmLang := "en"
-	
+
 	switch userLang {
 	case "cn", "zh", "zh-CN", "zh-cn":
 		mmLang = "zh-CN"
 	case "ru":
 		mmLang = "ru"
-	case "jp", "ja": // 兼容用户可能传 jp
+	case "jp", "ja":
 		mmLang = "ja"
 	case "fr":
 		mmLang = "fr"
@@ -80,6 +78,13 @@ func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 		mmLang = "es"
 	case "pt", "pt-BR", "pt-br":
 		mmLang = "pt-BR"
+	default:
+		// 如果用户传了其他奇怪的语言，默认保持 en，或者尝试直接用用户传的 key (以防 MaxMind 未来更新)
+		if userLang != "" {
+			// 这里保守策略：如果不在白名单，依然用 en，防止 panic
+			// 或者你可以放开，让 getName 去尝试匹配
+			mmLang = "en"
+		}
 	}
 
 	// 2. 查询 City 库 (地理位置)
@@ -96,14 +101,14 @@ func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 			if len(record.Subdivisions) > 0 {
 				res.Region = getName(record.Subdivisions[0].Names, mmLang)
 			}
-			
+
 			// 经纬度
 			res.Latitude = record.Location.Latitude
 			res.Longitude = record.Location.Longitude
 		}
 	}
 
-	// 3. 查询 ASN 库
+	// 3. 查询 ASN 库 (运营商)
 	if p.asnReader != nil {
 		if record, err := p.asnReader.ASN(ip); err == nil {
 			res.ASN = record.AutonomousSystemNumber
@@ -114,7 +119,7 @@ func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 	return res, nil
 }
 
-// 辅助函数：安全获取 Map 值
+// getName 辅助函数：安全获取 Map 值
 func getName(names map[string]string, lang string) string {
 	// 1. 尝试取目标语言
 	if val, ok := names[lang]; ok {
@@ -124,20 +129,9 @@ func getName(names map[string]string, lang string) string {
 	if val, ok := names["en"]; ok {
 		return val
 	}
-	// 3. 如果连英文都没有，随机取一个或者返回空 (极少见)
+	// 3. 如果连英文都没有，返回任意一个或空
 	for _, v := range names {
 		return v
-	}
-	return ""
-}
-
-// 辅助函数：安全获取 Map 值，如果目标语言不存在则回退到英文
-func getName(names map[string]string, lang string) string {
-	if val, ok := names[lang]; ok {
-		return val
-	}
-	if val, ok := names["en"]; ok {
-		return val
 	}
 	return ""
 }
