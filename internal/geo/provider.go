@@ -57,15 +57,29 @@ func (p *Provider) Close() {
 }
 
 // Lookup 执行查询并处理多语言逻辑
-func (p *Provider) Lookup(ipStr string, lang string) (*Result, error) {
+func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 	ip := net.ParseIP(ipStr)
 	res := &Result{IP: ipStr}
 
-	// 1. 映射语言代码
-	// MaxMind 使用 "zh-CN" 代表简体中文
+	// 1. 语言映射：将用户输入的简写映射为 MaxMind 的 Key
+	// 默认为英文
 	mmLang := "en"
-	if lang == "cn" {
+	
+	switch userLang {
+	case "cn", "zh", "zh-CN", "zh-cn":
 		mmLang = "zh-CN"
+	case "ru":
+		mmLang = "ru"
+	case "jp", "ja": // 兼容用户可能传 jp
+		mmLang = "ja"
+	case "fr":
+		mmLang = "fr"
+	case "de":
+		mmLang = "de"
+	case "es":
+		mmLang = "es"
+	case "pt", "pt-BR", "pt-br":
+		mmLang = "pt-BR"
 	}
 
 	// 2. 查询 City 库 (地理位置)
@@ -89,8 +103,7 @@ func (p *Provider) Lookup(ipStr string, lang string) (*Result, error) {
 		}
 	}
 
-	// 3. 查询 ASN 库 (运营商)
-	// 注意：MaxMind ASN 库本身只有英文，我们需要后续配合 ISP Translator 使用
+	// 3. 查询 ASN 库
 	if p.asnReader != nil {
 		if record, err := p.asnReader.ASN(ip); err == nil {
 			res.ASN = record.AutonomousSystemNumber
@@ -99,6 +112,23 @@ func (p *Provider) Lookup(ipStr string, lang string) (*Result, error) {
 	}
 
 	return res, nil
+}
+
+// 辅助函数：安全获取 Map 值
+func getName(names map[string]string, lang string) string {
+	// 1. 尝试取目标语言
+	if val, ok := names[lang]; ok {
+		return val
+	}
+	// 2. 尝试降级到英文
+	if val, ok := names["en"]; ok {
+		return val
+	}
+	// 3. 如果连英文都没有，随机取一个或者返回空 (极少见)
+	for _, v := range names {
+		return v
+	}
+	return ""
 }
 
 // 辅助函数：安全获取 Map 值，如果目标语言不存在则回退到英文
