@@ -91,10 +91,11 @@ lang := c.Query("lang", "en")
 			return c.JSON(fiber.Map{"ip": targetIP, "error": "geo_lookup_failed"})
 		}
 
-		// 2. 翻译 ISP
-		if result.ISP != "" {
-			result.ISP = ispTrans.Translate(result.ISP, lang)
-		}
+		if lang == "cn" || lang == "zh" {
+    if result.ISP != "" {
+        result.ISP = ispTrans.Translate(result.ISP, "cn")
+    }
+}
 
 		// 3. 设置缓存头
 		c.Set("Cache-Control", "public, max-age=3600")
