@@ -81,11 +81,9 @@ func main() {
 			targetIP = queryIP
 		}
 
-		// 获取语言参数 ?lang=cn
-		lang := c.Query("lang", "en")
-		if lang != "cn" && lang != "en" {
-			lang = "en"
-		}
+	
+// 我们直接把参数传给 geoProvider，让它去处理映射和回退
+lang := c.Query("lang", "en")
 
 		// 1. 查 MaxMind 库 (查询 targetIP)
 		result, err := geoProvider.Lookup(targetIP, lang)
