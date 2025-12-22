@@ -22,7 +22,6 @@ ExecStart=/opt/myipdns-go-api/myip-api \
 Restart=always
 RestartSec=3
 
-# 资源限制 (保护 1GB 内存不被耗尽)
 # 限制最大内存使用 500M (根据实际情况调整)
 MemoryMax=500M
 
