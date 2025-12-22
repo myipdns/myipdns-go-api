@@ -2,57 +2,97 @@ package isp
 
 import (
 	"encoding/json"
+	"log"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 )
 
-// Translator 管理 ISP 翻译字典
+// Translator 管理多语言 ISP 翻译字典
 type Translator struct {
-	mapping map[string]string
-	mu      sync.RWMutex // 虽然只读，但为了未来可能的热更新保留锁
+	// 数据结构升级：第一层Key是语言代码(如 "cn"), 第二层Key是英文ISP名称
+	mappings map[string]map[string]string
+	mu       sync.RWMutex
 }
 
-// NewTranslator 从 JSON 文件加载字典
-func NewTranslator(filePath string) (*Translator, error) {
+// NewTranslator 从指定目录加载所有 .json 文件
+func NewTranslator(dirPath string) (*Translator, error) {
 	t := &Translator{
-		mapping: make(map[string]string),
+		mappings: make(map[string]map[string]string),
 	}
 
-	// 如果文件不存在，直接返回一个空的翻译器（不报错，仅降级）
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return t, nil
-	}
-
-	data, err := os.ReadFile(filePath)
+	// 1. 读取目录
+	entries, err := os.ReadDir(dirPath)
 	if err != nil {
+		// 如果目录不存在，不报错，仅打印警告并返回空翻译器（允许降级运行）
+		if os.IsNotExist(err) {
+			log.Printf("[ISP] Warning: Dict directory '%s' not found. ISP translation disabled.", dirPath)
+			return t, nil
+		}
 		return nil, err
 	}
 
-	// 解析 JSON
-	if err := json.Unmarshal(data, &t.mapping); err != nil {
-		return nil, err
+	// 2. 遍历加载每个 json 文件
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		// 提取文件名作为语言代码 (例如 "cn.json" -> "cn")
+		langCode := strings.TrimSuffix(entry.Name(), ".json")
+		filePath := filepath.Join(dirPath, entry.Name())
+
+		// 读取文件内容
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			log.Printf("[ISP] Error reading %s: %v", entry.Name(), err)
+			continue
+		}
+
+		// 解析 JSON
+		var dict map[string]string
+		if err := json.Unmarshal(data, &dict); err != nil {
+			log.Printf("[ISP] Error parsing JSON %s: %v", entry.Name(), err)
+			continue
+		}
+
+		t.mappings[langCode] = dict
+		log.Printf("[ISP] Loaded dictionary: %s (%d entries)", langCode, len(dict))
 	}
 
 	return t, nil
 }
 
 // Translate 尝试翻译 ISP 名称
-// lang: 目标语言 "cn" 或 "en"
-// raw: 原始英文 ISP
+// raw: 原始英文 ISP (例如 "Google LLC")
+// lang: 目标语言代码 (例如 "cn", "ja", "ru")
 func (t *Translator) Translate(raw string, lang string) string {
-	// 如果不是中文模式，直接返回原文
-	if lang != "cn" {
-		return raw
+	// 简单规范化语言代码，兼容 URL 参数
+	targetLang := lang
+	if lang == "zh" || lang == "zh-CN" {
+		targetLang = "cn"
+	}
+	if lang == "jp" {
+		targetLang = "ja"
 	}
 
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	// 查找字典
-	if val, ok := t.mapping[raw]; ok {
+	// 1. 查找对应语言的字典
+	dict, exists := t.mappings[targetLang]
+	if !exists {
+		// 如果没有该语言的字典（比如用户请求了 lang=fr 但你还没做 fr.json）
+		// 直接返回原始英文名 (Fallback to English)
+		return raw
+	}
+
+	// 2. 在字典中查找 ISP 名称
+	if val, ok := dict[raw]; ok && val != "" {
 		return val
 	}
 
-	// 没找到则返回原文
+	// 3. 如果字典里没这个 ISP，返回原始英文名
 	return raw
 }

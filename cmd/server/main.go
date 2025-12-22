@@ -19,10 +19,10 @@ func main() {
 	// 1. 加载配置
 	cfg := config.Load()
 
-	// 2. 初始化数据层
-	ispTrans, err := isp.NewTranslator(cfg.ISPDictPath)
+	// 2. 初始化 ISP 数据层 (这里改用了 ISPDictDir)
+	ispTrans, err := isp.NewTranslator(cfg.ISPDictDir)
 	if err != nil {
-		log.Printf("[Warning] Failed to load ISP dict: %v", err)
+		log.Printf("[Warning] Failed to load ISP dicts: %v", err)
 	}
 
 	geoProvider, err := geo.NewProvider(cfg.MMDBCityPath, cfg.MMDBASNPath)
@@ -30,7 +30,6 @@ func main() {
 		log.Fatalf("Failed to load MaxMind DB: %v", err)
 	}
 	defer geoProvider.Close()
-
 	// 3. 初始化 Fiber App
 	app := fiber.New(fiber.Config{
 		AppName:               "MyIPDNS API/1.2",
@@ -73,20 +72,20 @@ func main() {
 			targetIP = queryIP
 		}
 
-		// 获取语言参数 (不再限制只能是 en/cn，支持 ru/jp 等)
+		// 获取语言参数 (默认 en)
 		lang := c.Query("lang", "en")
 
-		// 1. 查 MaxMind 库 (多语言逻辑在 Provider 内部处理)
+		// 1. 查 MaxMind 库
 		result, err := geoProvider.Lookup(targetIP, lang)
 		if err != nil {
 			return c.JSON(fiber.Map{"ip": targetIP, "error": "geo_lookup_failed"})
 		}
 
-		// 2. 翻译 ISP (仅在中文模式下生效，因为我们只有中文 ISP 字典)
-		if lang == "cn" || lang == "zh" || lang == "zh-CN" {
-			if result.ISP != "" {
-				result.ISP = ispTrans.Translate(result.ISP, "cn")
-			}
+		// 2. 翻译 ISP (★ 核心修改：逻辑简化 ★)
+		// 如果有 ISP 信息，直接扔给翻译器。
+		// 翻译器会根据 lang 自动查找对应的 json (如 ja.json)，找不到就原样返回。
+		if result.ISP != "" {
+			result.ISP = ispTrans.Translate(result.ISP, lang)
 		}
 
 		c.Set("Cache-Control", "public, max-age=3600")
