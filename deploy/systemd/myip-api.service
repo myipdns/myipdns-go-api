@@ -13,7 +13,7 @@ ExecStart=/opt/myipdns-go-api/myip-api \
     -port=8080 \
     -city-db=/usr/share/GeoIP/GeoLite2-City.mmdb \
     -asn-db=/usr/share/GeoIP/GeoLite2-ASN.mmdb \
-    -isp-dict=data/isp_zh.json
+    -isp-dir=data/isp
 
 # 环境变量 (可选，如果不想用命令行参数)
 # Environment="PORT=8080"
