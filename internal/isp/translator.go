@@ -6,14 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
 // Translator 管理多语言 ISP 翻译字典
 type Translator struct {
 	// 数据结构升级：第一层Key是语言代码(如 "cn"), 第二层Key是英文ISP名称
+	// 只读数据，不需要 Mutex 为了高性能
 	mappings map[string]map[string]string
-	mu       sync.RWMutex
 }
 
 // NewTranslator 从指定目录加载所有 .json 文件
@@ -76,9 +75,6 @@ func (t *Translator) Translate(raw string, lang string) string {
 	if lang == "jp" {
 		targetLang = "ja"
 	}
-
-	t.mu.RLock()
-	defer t.mu.RUnlock()
 
 	// 1. 查找对应语言的字典
 	dict, exists := t.mappings[targetLang]

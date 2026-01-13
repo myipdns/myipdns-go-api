@@ -32,7 +32,7 @@ func NewSelector(cfg SelectorConfig) fiber.Handler {
 		// 只有主域名才允许 "Full" 模式 (查库 + JSON)
 		if strings.EqualFold(host, cfg.MainDomain) {
 			mode = "full"
-			
+
 			// --- CDN 模式 IP 获取逻辑 ---
 			// 优先信任 Cloudflare 传递的 Header
 			// 注意：这里假设 Nginx 已经过滤了外部伪造的 Header，
@@ -56,11 +56,12 @@ func NewSelector(cfg SelectorConfig) fiber.Handler {
 			realIP = c.Context().RemoteAddr().String()
 		}
 
-		// 处理 IP 格式: 
+		// 处理 IP 格式:
 		// 有时 XFF 会包含多个 IP "client, proxy1, proxy2"，我们取第一个
-		if strings.Contains(realIP, ",") {
-			parts := strings.Split(realIP, ",")
-			realIP = strings.TrimSpace(parts[0])
+		// 处理 IP 格式:
+		// 有时 XFF 会包含多个 IP "client, proxy1, proxy2"，我们取第一个
+		if idx := strings.IndexByte(realIP, ','); idx >= 0 {
+			realIP = strings.TrimSpace(realIP[:idx])
 		}
 
 		// 3. 将结果存入 Fiber 的 Locals (请求上下文)

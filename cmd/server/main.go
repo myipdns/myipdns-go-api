@@ -9,6 +9,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -39,6 +40,8 @@ func main() {
 		WriteTimeout:          5 * time.Second,
 		IdleTimeout:           30 * time.Second,
 		ProxyHeader:           "X-Forwarded-For",
+		JSONEncoder:           json.Marshal,
+		JSONDecoder:           json.Unmarshal,
 	})
 
 	app.Use(recover.New())
@@ -84,8 +87,8 @@ func main() {
 		// 2. 翻译 ISP (★ 核心修改：逻辑简化 ★)
 		// 如果有 ISP 信息，直接扔给翻译器。
 		// 翻译器会根据 lang 自动查找对应的 json (如 ja.json)，找不到就原样返回。
-		if result.ISP != "" {
-			result.ISP = ispTrans.Translate(result.ISP, lang)
+		if result.ASOrg != "" {
+			result.ASOrg = ispTrans.Translate(result.ASOrg, lang)
 		}
 
 		c.Set("Cache-Control", "public, max-age=3600")

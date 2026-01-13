@@ -14,16 +14,31 @@ type Provider struct {
 }
 
 // Result 定义标准的返回结构
+// 字段命名参考 MaxMind CSV 格式标准
 type Result struct {
-	IP          string  `json:"ip"`
-	CountryCode string  `json:"country_code"`
-	Country     string  `json:"country"`
-	Region      string  `json:"region"`
-	City        string  `json:"city"`
-	Latitude    float64 `json:"latitude"`
-	Longitude   float64 `json:"longitude"`
-	ASN         uint    `json:"asn,omitempty"`
-	ISP         string  `json:"isp,omitempty"`
+	IP string `json:"ip"`
+
+	// --- 地理位置 (Location) ---
+	Continent     string  `json:"continent,omitempty"`      // 大洲
+	ContinentCode string  `json:"continent_code,omitempty"` // AS, EU, NA 等
+	Country       string  `json:"country,omitempty"`        // 国家
+	CountryCode   string  `json:"country_code,omitempty"`   // CN, US 等
+	IsEU          bool    `json:"is_eu,omitempty"`          // 是否为欧盟
+	Region        string  `json:"region,omitempty"`         // 省/州 (原 Subdivision 1)
+	RegionCode    string  `json:"region_code,omitempty"`    // 省/州 ISO 代码
+	City          string  `json:"city,omitempty"`           // 城市
+	TimeZone      string  `json:"time_zone,omitempty"`      // 时区 (如 Asia/Shanghai)
+	Latitude      float64 `json:"latitude,omitempty"`
+	Longitude     float64 `json:"longitude,omitempty"`
+
+	// --- 网络特征 (Network Traits) ---
+	ASN   uint   `json:"asn,omitempty"`
+	ASOrg string `json:"as_org,omitempty"` // 运营商 (如 China Telecom)
+
+	// --- 特殊标记 (Special Tags) ---
+	IsProxy     bool `json:"is_proxy,omitempty"`     // 是否为匿名代理/VPN
+	IsAnycast   bool `json:"is_anycast,omitempty"`   // 是否为 Anycast 广播网络
+	IsSatellite bool `json:"is_satellite,omitempty"` // 是否为卫星服务商 (如 Starlink)
 }
 
 // NewProvider 初始化数据库
@@ -60,9 +75,7 @@ func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 	res := &Result{IP: ipStr}
 
 	// 1. 语言映射：将用户输入的简写映射为 MaxMind 的 Key
-	// MaxMind 支持: de, en, es, fr, ja, pt-BR, ru, zh-CN
 	mmLang := "en"
-
 	switch userLang {
 	case "cn", "zh", "zh-CN", "zh-cn":
 		mmLang = "zh-CN"
@@ -79,10 +92,8 @@ func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 	case "pt", "pt-BR", "pt-br":
 		mmLang = "pt-BR"
 	default:
-		// 如果用户传了其他奇怪的语言，默认保持 en，或者尝试直接用用户传的 key (以防 MaxMind 未来更新)
+		// 如果用户传了其他奇怪的语言，默认保持 en
 		if userLang != "" {
-			// 这里保守策略：如果不在白名单，依然用 en，防止 panic
-			// 或者你可以放开，让 getName 去尝试匹配
 			mmLang = "en"
 		}
 	}
@@ -90,21 +101,33 @@ func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 	// 2. 查询 City 库 (地理位置)
 	if p.cityReader != nil {
 		if record, err := p.cityReader.City(ip); err == nil {
-			// 国家
+			// Continent
+			res.ContinentCode = record.Continent.Code
+			res.Continent = getName(record.Continent.Names, mmLang)
+
+			// Country
 			res.CountryCode = record.Country.IsoCode
 			res.Country = getName(record.Country.Names, mmLang)
+			res.IsEU = record.Country.IsInEuropeanUnion
 
-			// 城市
-			res.City = getName(record.City.Names, mmLang)
-
-			// 省份/区域 (取第一个 subdivisions)
+			// Subdivisions (Region)
 			if len(record.Subdivisions) > 0 {
+				res.RegionCode = record.Subdivisions[0].IsoCode
 				res.Region = getName(record.Subdivisions[0].Names, mmLang)
 			}
 
-			// 经纬度
+			// City
+			res.City = getName(record.City.Names, mmLang)
+
+			// Location
 			res.Latitude = record.Location.Latitude
 			res.Longitude = record.Location.Longitude
+			res.TimeZone = record.Location.TimeZone
+
+			// Traits
+			res.IsProxy = record.Traits.IsAnonymousProxy
+			res.IsSatellite = record.Traits.IsSatelliteProvider
+			res.IsAnycast = record.Traits.IsAnycast
 		}
 	}
 
@@ -112,7 +135,7 @@ func (p *Provider) Lookup(ipStr string, userLang string) (*Result, error) {
 	if p.asnReader != nil {
 		if record, err := p.asnReader.ASN(ip); err == nil {
 			res.ASN = record.AutonomousSystemNumber
-			res.ISP = record.AutonomousSystemOrganization
+			res.ASOrg = record.AutonomousSystemOrganization
 		}
 	}
 
