@@ -41,7 +41,25 @@ Returns detailed IP geolocation, ASN, and carrier information.
 *   **Response Example**:
 `https://api.myipdns.com/?ip=8.8.4.4&lang=en`
 ```json
-{"ip":"8.8.4.4","continent":"North America","continent_code":"NA","country":"United States","country_code":"US","is_eu":false,"region":"Massachusetts","region_code":"MA","city":"Westfield","time_zone":"America/New_York","latitude":42.1293,"longitude":-72.7522,"asn":15169,"as_org":"GOOGLE","is_proxy":false,"is_anycast":true,"is_satellite":false}
+{
+  "ip": "8.8.4.4",
+  "continent": "North America",
+  "continent_code": "NA",
+  "country": "United States",
+  "country_code": "US",
+  "is_eu": false,
+  "region": "Massachusetts",
+  "region_code": "MA",
+  "city": "Westfield",
+  "time_zone": "America/New_York",
+  "latitude": 42.1293,
+  "longitude": -72.7522,
+  "asn": 15169,
+  "as_org": "GOOGLE",
+  "is_proxy": false,
+  "is_anycast": true,
+  "is_satellite": false
+}
 ```
 
 #### 2. Plain Text Interface (IPv4)
@@ -94,7 +112,25 @@ I don't think anyone will deploy this, so I won't write it. Let AI teach it.
 *   **响应示例**:
 `https://api.myipdns.com/?ip=8.8.4.4&lang=en`
 ```json
-{"ip":"8.8.4.4","continent":"North America","continent_code":"NA","country":"United States","country_code":"US","is_eu":false,"region":"Massachusetts","region_code":"MA","city":"Westfield","time_zone":"America/New_York","latitude":42.1293,"longitude":-72.7522,"asn":15169,"as_org":"GOOGLE","is_proxy":false,"is_anycast":true,"is_satellite":false}
+{
+  "ip": "8.8.4.4",
+  "continent": "North America",
+  "continent_code": "NA",
+  "country": "United States",
+  "country_code": "US",
+  "is_eu": false,
+  "region": "Massachusetts",
+  "region_code": "MA",
+  "city": "Westfield",
+  "time_zone": "America/New_York",
+  "latitude": 42.1293,
+  "longitude": -72.7522,
+  "asn": 15169,
+  "as_org": "GOOGLE",
+  "is_proxy": false,
+  "is_anycast": true,
+  "is_satellite": false
+}
 ```
 
 #### 2. 纯文本接口 (IPv4)
@@ -147,7 +183,25 @@ I don't think anyone will deploy this, so I won't write it. Let AI teach it.
 *   **Пример ответа**:
 `https://api.myipdns.com/?ip=8.8.4.4&lang=en`
 ```json
-{"ip":"8.8.4.4","continent":"North America","continent_code":"NA","country":"United States","country_code":"US","is_eu":false,"region":"Massachusetts","region_code":"MA","city":"Westfield","time_zone":"America/New_York","latitude":42.1293,"longitude":-72.7522,"asn":15169,"as_org":"GOOGLE","is_proxy":false,"is_anycast":true,"is_satellite":false}
+{
+  "ip": "8.8.4.4",
+  "continent": "North America",
+  "continent_code": "NA",
+  "country": "United States",
+  "country_code": "US",
+  "is_eu": false,
+  "region": "Massachusetts",
+  "region_code": "MA",
+  "city": "Westfield",
+  "time_zone": "America/New_York",
+  "latitude": 42.1293,
+  "longitude": -72.7522,
+  "asn": 15169,
+  "as_org": "GOOGLE",
+  "is_proxy": false,
+  "is_anycast": true,
+  "is_satellite": false
+}
 ```
 
 #### 2. Текстовый интерфейс (IPv4)
@@ -200,7 +254,25 @@ I don't think anyone will deploy this, so I won't write it. Let AI teach it.
 *   **レスポンス例**:
 `https://api.myipdns.com/?ip=8.8.4.4&lang=en`
 ```json
-{"ip":"8.8.4.4","continent":"North America","continent_code":"NA","country":"United States","country_code":"US","is_eu":false,"region":"Massachusetts","region_code":"MA","city":"Westfield","time_zone":"America/New_York","latitude":42.1293,"longitude":-72.7522,"asn":15169,"as_org":"GOOGLE","is_proxy":false,"is_anycast":true,"is_satellite":false}
+{
+  "ip": "8.8.4.4",
+  "continent": "North America",
+  "continent_code": "NA",
+  "country": "United States",
+  "country_code": "US",
+  "is_eu": false,
+  "region": "Massachusetts",
+  "region_code": "MA",
+  "city": "Westfield",
+  "time_zone": "America/New_York",
+  "latitude": 42.1293,
+  "longitude": -72.7522,
+  "asn": 15169,
+  "as_org": "GOOGLE",
+  "is_proxy": false,
+  "is_anycast": true,
+  "is_satellite": false
+}
 ```
 
 #### 2. プレーンテキストインターフェース (IPv4)
@@ -253,7 +325,25 @@ Renvoie la géolocalisation IP détaillée, l'ASN et les informations sur l'opé
 *   **Exemple de Réponse**:
 `https://api.myipdns.com/?ip=8.8.4.4&lang=en`
 ```json
-{"ip":"8.8.4.4","continent":"North America","continent_code":"NA","country":"United States","country_code":"US","is_eu":false,"region":"Massachusetts","region_code":"MA","city":"Westfield","time_zone":"America/New_York","latitude":42.1293,"longitude":-72.7522,"asn":15169,"as_org":"GOOGLE","is_proxy":false,"is_anycast":true,"is_satellite":false}
+{
+  "ip": "8.8.4.4",
+  "continent": "North America",
+  "continent_code": "NA",
+  "country": "United States",
+  "country_code": "US",
+  "is_eu": false,
+  "region": "Massachusetts",
+  "region_code": "MA",
+  "city": "Westfield",
+  "time_zone": "America/New_York",
+  "latitude": 42.1293,
+  "longitude": -72.7522,
+  "asn": 15169,
+  "as_org": "GOOGLE",
+  "is_proxy": false,
+  "is_anycast": true,
+  "is_satellite": false
+}
 ```
 
 #### 2. Interface Texte Brut (IPv4)
@@ -306,7 +396,25 @@ Gibt detaillierte IP-Geolokalisierung, ASN und Betreiberinformationen zurück.
 *   **Antwortbeispiel**:
 `https://api.myipdns.com/?ip=8.8.4.4&lang=en`
 ```json
-{"ip":"8.8.4.4","continent":"North America","continent_code":"NA","country":"United States","country_code":"US","is_eu":false,"region":"Massachusetts","region_code":"MA","city":"Westfield","time_zone":"America/New_York","latitude":42.1293,"longitude":-72.7522,"asn":15169,"as_org":"GOOGLE","is_proxy":false,"is_anycast":true,"is_satellite":false}
+{
+  "ip": "8.8.4.4",
+  "continent": "North America",
+  "continent_code": "NA",
+  "country": "United States",
+  "country_code": "US",
+  "is_eu": false,
+  "region": "Massachusetts",
+  "region_code": "MA",
+  "city": "Westfield",
+  "time_zone": "America/New_York",
+  "latitude": 42.1293,
+  "longitude": -72.7522,
+  "asn": 15169,
+  "as_org": "GOOGLE",
+  "is_proxy": false,
+  "is_anycast": true,
+  "is_satellite": false
+}
 ```
 
 #### 2. Klartext-Schnittstelle (IPv4)
@@ -359,7 +467,25 @@ Devuelve geolocalización IP detallada, ASN e información del operador.
 *   **Ejemplo de Respuesta**:
 `https://api.myipdns.com/?ip=8.8.4.4&lang=en`
 ```json
-{"ip":"8.8.4.4","continent":"North America","continent_code":"NA","country":"United States","country_code":"US","is_eu":false,"region":"Massachusetts","region_code":"MA","city":"Westfield","time_zone":"America/New_York","latitude":42.1293,"longitude":-72.7522,"asn":15169,"as_org":"GOOGLE","is_proxy":false,"is_anycast":true,"is_satellite":false}
+{
+  "ip": "8.8.4.4",
+  "continent": "North America",
+  "continent_code": "NA",
+  "country": "United States",
+  "country_code": "US",
+  "is_eu": false,
+  "region": "Massachusetts",
+  "region_code": "MA",
+  "city": "Westfield",
+  "time_zone": "America/New_York",
+  "latitude": 42.1293,
+  "longitude": -72.7522,
+  "asn": 15169,
+  "as_org": "GOOGLE",
+  "is_proxy": false,
+  "is_anycast": true,
+  "is_satellite": false
+}
 ```
 
 #### 2. Interfaz de Texto Plano (IPv4)
@@ -412,7 +538,25 @@ Retorna geolocalização IP detalhada, ASN e informações da operadora.
 *   **Exemplo de Resposta**:
 `https://api.myipdns.com/?ip=8.8.4.4&lang=en`
 ```json
-{"ip":"8.8.4.4","continent":"North America","continent_code":"NA","country":"United States","country_code":"US","is_eu":false,"region":"Massachusetts","region_code":"MA","city":"Westfield","time_zone":"America/New_York","latitude":42.1293,"longitude":-72.7522,"asn":15169,"as_org":"GOOGLE","is_proxy":false,"is_anycast":true,"is_satellite":false}
+{
+  "ip": "8.8.4.4",
+  "continent": "North America",
+  "continent_code": "NA",
+  "country": "United States",
+  "country_code": "US",
+  "is_eu": false,
+  "region": "Massachusetts",
+  "region_code": "MA",
+  "city": "Westfield",
+  "time_zone": "America/New_York",
+  "latitude": 42.1293,
+  "longitude": -72.7522,
+  "asn": 15169,
+  "as_org": "GOOGLE",
+  "is_proxy": false,
+  "is_anycast": true,
+  "is_satellite": false
+}
 ```
 
 #### 2. Interface de Texto Simples (IPv4)
