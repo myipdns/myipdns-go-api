@@ -7,7 +7,6 @@ import (
 	"myipdns-go-api/internal/isp"
 	"myipdns-go-api/internal/middleware"
 	"net"
-	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
@@ -17,29 +16,24 @@ import (
 )
 
 func main() {
-	// 1. 加载配置
 	cfg := config.Load()
 
-	// 2. 初始化 ISP 数据层 (这里改用了 ISPDictDir)
+	// 初始化翻译器
 	ispTrans, err := isp.NewTranslator(cfg.ISPDictDir)
 	if err != nil {
 		log.Printf("[Warning] Failed to load ISP dicts: %v", err)
 	}
 
-	geoProvider, err := geo.NewProvider(cfg.MMDBCityPath, cfg.MMDBASNPath)
+	// [修改] 传入新的 DB 路径
+	geoProvider, err := geo.NewProvider(cfg.MMDBCityPath, cfg.MMDBASNPath, cfg.IP2ProxyDBPath)
 	if err != nil {
-		log.Fatalf("Failed to load MaxMind DB: %v", err)
+		log.Fatalf("Failed to load DBs: %v", err)
 	}
 	defer geoProvider.Close()
-	// 3. 初始化 Fiber App
+
 	app := fiber.New(fiber.Config{
-		AppName:               "MyIPDNS API/1.2",
+		AppName:               "MyIPDNS API/1.3", // 版本号升级
 		DisableStartupMessage: false,
-		Immutable:             false,
-		ReadTimeout:           5 * time.Second,
-		WriteTimeout:          5 * time.Second,
-		IdleTimeout:           30 * time.Second,
-		ProxyHeader:           "X-Forwarded-For",
 		JSONEncoder:           json.Marshal,
 		JSONDecoder:           json.Unmarshal,
 	})
@@ -47,48 +41,63 @@ func main() {
 	app.Use(recover.New())
 	app.Use(compress.New())
 	app.Use(cors.New(cors.Config{AllowOrigins: "*", AllowMethods: "GET,HEAD"}))
+	app.Use(middleware.NewSelector(middleware.SelectorConfig{MainDomain: cfg.MainDomain}))
 
-	app.Use(middleware.NewSelector(middleware.SelectorConfig{
-		MainDomain: cfg.MainDomain,
-	}))
-
-	// 4. 核心路由处理逻辑
 	handler := func(c *fiber.Ctx) error {
 		clientIP := c.Locals(middleware.CtxClientIP).(string)
 		mode := c.Locals(middleware.CtxMode).(string)
 
-		// 极简模式：直接返回 IP
 		if mode == "simple" {
 			return c.SendString(clientIP)
 		}
 
-		// 完整模式：支持查询指定 IP
 		targetIP := clientIP
 		queryIP := c.Query("ip")
+		var parsedIP net.IP
+
 		if queryIP != "" {
-			if net.ParseIP(queryIP) == nil {
-				return c.Status(400).JSON(fiber.Map{
-					"error": "invalid_ip_format",
-					"ip":    queryIP,
-				})
+			parsedIP = net.ParseIP(queryIP)
+			if parsedIP == nil {
+				return c.Status(400).JSON(fiber.Map{"error": "invalid_ip", "ip": queryIP})
 			}
 			targetIP = queryIP
+		} else {
+			// 如果没有 query ip，解析 clientIP
+			parsedIP = net.ParseIP(targetIP)
 		}
 
-		// 获取语言参数 (默认 en)
-		lang := c.Query("lang", "en")
+		// 兜底：如果 clientIP 也是无效的（理论上中间件保证了，但防御性编程）
+		if parsedIP == nil {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid_client_ip", "ip": targetIP})
+		}
 
-		// 1. 查 MaxMind 库
-		result, err := geoProvider.Lookup(targetIP, lang)
+		lang := c.Query("lang", "en")
+		// [新增] 检查 full 参数
+		isFull := c.QueryBool("full")
+
+		var result *geo.Result
+		var err error
+
+		// [新增] 分支逻辑
+		if isFull {
+			result, err = geoProvider.LookupFull(parsedIP, lang)
+		} else {
+			result, err = geoProvider.Lookup(parsedIP, lang)
+		}
+
 		if err != nil {
 			return c.JSON(fiber.Map{"ip": targetIP, "error": "geo_lookup_failed"})
 		}
 
-		// 2. 翻译 ISP (★ 核心修改：逻辑简化 ★)
-		// 如果有 ISP 信息，直接扔给翻译器。
-		// 翻译器会根据 lang 自动查找对应的 json (如 ja.json)，找不到就原样返回。
+		// [修改] 翻译逻辑
+		// 1. 翻译 ASOrg
 		if result.ASOrg != "" {
 			result.ASOrg = ispTrans.Translate(result.ASOrg, lang)
+		}
+		// 2. [新增] 翻译 ISP (复用同一个引擎)
+		// 只有当 isFull=true 且 ISP 字段有值时，这里才会生效
+		if result.ISP != "" {
+			result.ISP = ispTrans.Translate(result.ISP, lang)
 		}
 
 		c.Set("Cache-Control", "public, max-age=3600")
