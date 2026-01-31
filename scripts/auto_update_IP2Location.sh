@@ -2,7 +2,7 @@
 
 # ================= 配置区域 =================
 # 1. 填入您的永久 Token
-TOKEN="你的_DOWNLOAD_TOKEN_填在这里"
+TOKEN=""
 
 # 2. 数据库代码 (IPv6 CSV版)
 CODE="PX12LITECSVIPV6"
@@ -10,7 +10,6 @@ CODE="PX12LITECSVIPV6"
 # 3. 目标保存目录
 TARGET_DIR="/usr/share/ip2location"
 TARGET_DB="ip2proxy.db"
-#  /usr/share/ip2location/ip2proxy.db
 
 # 4. 临时工作目录
 TMP_DIR="/root/ip2proxy_temp_build"
@@ -97,10 +96,11 @@ c.execute('PRAGMA synchronous = OFF')
 c.execute('PRAGMA journal_mode = MEMORY')
 
 # --- 创建表结构 (16列) ---
+# [Fix] ip_from/ip_to 改为 TEXT 以支持大数排序 (Pad to 39 chars)
 c.execute('''
     CREATE TABLE ip2proxy (
-        ip_from      NUMERIC,  -- [1] Start IP
-        ip_to        NUMERIC,  -- [2] End IP
+        ip_from      TEXT,     -- [1] Start IP (Padded 39 chars)
+        ip_to        TEXT,     -- [2] End IP (Padded 39 chars)
         proxy_type   TEXT,     -- [3] Proxy Type
         country_code TEXT,     -- [4] Country Code
         country_name TEXT,     -- [5] Country Name
@@ -134,6 +134,14 @@ with open(csv_file, 'r', encoding='utf-8', errors='replace') as f:
         if len(row_data) < 16:
              row_data += [None] * (16 - len(row_data))
 
+        # [Fix] Padding IP to 39 digits
+        try:
+            # 假设 CSV 里是十进制数字符串
+            row_data[0] = str(row_data[0]).zfill(39)
+            row_data[1] = str(row_data[1]).zfill(39)
+        except:
+            continue # Skip invalid rows
+
         batch.append(row_data)
         count += 1
         
@@ -151,6 +159,7 @@ with open(csv_file, 'r', encoding='utf-8', errors='replace') as f:
 print(f"\nImport finished. Total rows: {count}")
 
 print("Creating index (idx_ip_to)...")
+# INDEX on TEXT column works lexicographically (which is what we want for padded strings)
 c.execute('CREATE INDEX idx_ip_to ON ip2proxy(ip_to)')
 
 conn.close()

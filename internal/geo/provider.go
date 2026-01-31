@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3" // 引入 SQLite 驱动
 	"github.com/oschwald/geoip2-golang"
@@ -14,7 +15,8 @@ import (
 type Provider struct {
 	cityReader *geoip2.Reader
 	asnReader  *geoip2.Reader
-	ip2ProxyDB *sql.DB // [新增] SQLite 连接
+	ip2ProxyDB *sql.DB   // [新增] SQLite 连接
+	stmt       *sql.Stmt // [新增] 预编译查询语句
 }
 
 // Result 定义标准的返回结构
@@ -81,6 +83,22 @@ func NewProvider(cityPath, asnPath, ip2proxyPath string) (*Provider, error) {
 		} else {
 			db.SetMaxOpenConns(4) // SQLite 建议限制并发连接
 			p.ip2ProxyDB = db
+
+			// [优化] 预编译 SQL 语句
+			// 针对 TEXT 列的 >= 比较，索引扫描更高效
+			query := `
+		SELECT country_code, country_name, region, city, isp, domain, 
+		       usage_type, asn, as_name, threat, provider, fraud_score, proxy_type
+		FROM ip2proxy 
+		INDEXED BY idx_ip_to 
+		WHERE ip_to >= ? 
+		ORDER BY ip_to ASC 
+		LIMIT 1
+	`
+			p.stmt, err = db.Prepare(query)
+			if err != nil {
+				log.Printf("[Warning] Failed to prepare IP2Proxy query: %v", err)
+			}
 		}
 	}
 
@@ -94,6 +112,9 @@ func (p *Provider) Close() {
 	}
 	if p.asnReader != nil {
 		p.asnReader.Close()
+	}
+	if p.stmt != nil {
+		p.stmt.Close()
 	}
 	if p.ip2ProxyDB != nil {
 		p.ip2ProxyDB.Close()
@@ -229,7 +250,7 @@ type ip2ProxyRaw struct {
 
 // 执行 SQLite 查询
 func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
-	if p.ip2ProxyDB == nil {
+	if p.ip2ProxyDB == nil || p.stmt == nil {
 		return nil
 	}
 
@@ -247,40 +268,17 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 		ipInt.SetBytes(ip.To16())
 	}
 
-	// 构建 SQL 查询
-	// 针对我们之前脚本生成的 SQLite，IPv4 可能是 INTEGER，IPv6 可能是 TEXT
-	// 我们使用参数化查询，database/sql 会处理大部分类型适配
-	// 注意：idx_ip_to 索引对性能至关重要
-	query := `
-		SELECT country_code, country_name, region, city, isp, domain, 
-		       usage_type, asn, as_name, threat, provider, fraud_score, proxy_type
-		FROM ip2proxy 
-		INDEXED BY idx_ip_to 
-		WHERE ip_to >= ? 
-		ORDER BY ip_to ASC 
-		LIMIT 1
-	`
+	// [Fix] 将 IP 转换为 39 位补零字符串
+	ipStr := ipInt.String()
+	if len(ipStr) < 39 {
+		ipStr = strings.Repeat("0", 39-len(ipStr)) + ipStr
+	}
 
 	var cc, cn, reg, city, isp, dom, usage, asnStr, asName, threat, prov, pType sql.NullString
 	var fScore sql.NullInt32
 
-	// 这里有个技巧：如果是 IPv6，因为 SQLite 里的 NUMERIC 存不下 128位整数，
-	// Python 脚本可能将其存为了 TEXT。
-	// 为了确保查询匹配，我们传入 IP 的字符串形式的大整数。
-	// 对于 IPv4，如果 DB 里存的是 INTEGER，传入字符串通常 SQLite 也能隐式转换比较，
-	// 但最稳妥的是：IPv4 传 int64，IPv6 传 string。
-	var arg interface{}
-	if isIPv4 {
-		arg = ipInt.Int64()
-	} else {
-		// IPv6 必须补齐位数或者依靠字符串比较（这取决于建库时的细节），
-		// 这里假设 DB 存储的是纯数字字符串。
-		// 为了兼容性，这里传入 big.Int 的字符串形式。
-		arg = ipInt.String()
-	}
-
-	// 尝试执行
-	err := p.ip2ProxyDB.QueryRow(query, arg).Scan(
+	// 使用预编译语句查询
+	err := p.stmt.QueryRow(ipStr).Scan(
 		&cc, &cn, &reg, &city, &isp, &dom, &usage, &asnStr, &asName, &threat, &prov, &fScore, &pType,
 	)
 
