@@ -36,6 +36,10 @@ func main() {
 		DisableStartupMessage: false,
 		JSONEncoder:           json.Marshal,
 		JSONDecoder:           json.Unmarshal,
+		// [新增] 信任本地 Nginx 的 X-Forwarded-For
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:          []string{"127.0.0.1", "::1"},
+		ProxyHeader:             fiber.HeaderXForwardedFor,
 	})
 
 	app.Use(recover.New())
