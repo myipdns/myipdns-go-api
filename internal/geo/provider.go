@@ -260,13 +260,10 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 	}
 
 	// 判断是 IPv4 还是 IPv6
-	isIPv4 := ip.To4() != nil
+	// [Fix] IP2Location IPv6 数据库中的 IPv4 地址是映射由于 ::ffff:x.x.x.x (IPv4-mapped IPv6)
+	// 因此我们需要始终将其作为 16 字节处理，以生成正确的整数值。
 	ipInt := big.NewInt(0)
-	if isIPv4 {
-		ipInt.SetBytes(ip.To4())
-	} else {
-		ipInt.SetBytes(ip.To16())
-	}
+	ipInt.SetBytes(ip.To16())
 
 	// [Fix] 将 IP 转换为 39 位补零字符串
 	ipStr := ipInt.String()
