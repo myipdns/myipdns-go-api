@@ -13,7 +13,8 @@ ExecStart=/opt/myipdns-go-api/myip-api \
     -port=8080 \
     -city-db=/usr/share/GeoIP/GeoLite2-City.mmdb \
     -asn-db=/usr/share/GeoIP/GeoLite2-ASN.mmdb \
-    -isp-dir=data/isp
+    -isp-dir=data/isp \
+    -ip2proxy-db=/usr/share/ip2location/ip2proxy.db
 
 # 环境变量 (可选，如果不想用命令行参数)
 # Environment="PORT=8080"
@@ -22,8 +23,8 @@ ExecStart=/opt/myipdns-go-api/myip-api \
 Restart=always
 RestartSec=3
 
-# 限制最大内存使用 500M (根据实际情况调整)
-MemoryMax=500M
+# 限制最大内存使用 900M (根据实际情况调整)
+MemoryMax=900M
 
 # 限制打开文件句柄数 (高并发必需)
 LimitNOFILE=65535
