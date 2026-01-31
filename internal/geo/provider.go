@@ -288,8 +288,12 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 	// 因为我们只用了 ip_to >= ipStr，如果 IP 落在两个段之间的空洞里，
 	// 数据库会返回 下一段 (Next Range)，导致结果错误。
 	// 字符串比较：ipFrom ("000...100") > ipStr ("000...099") -> 显然不匹配
-	if ipFrom.Valid && ipFrom.String > ipStr {
-		return nil
+	if ipFrom.Valid {
+		if ipFrom.String > ipStr {
+			log.Printf("[Debug] Gap detected: MatchFrom(%s) > Query(%s). Diff=%d",
+				ipFrom.String, ipStr, len(ipFrom.String)-len(ipStr))
+			return nil
+		}
 	}
 
 	// 检查结果是否真的包含该 IP (处理数据空洞)
