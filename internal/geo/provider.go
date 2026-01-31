@@ -300,6 +300,8 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 	// 在生产环境中，应该再查一次 ip_from 验证 ip_num >= ip_from
 	// 但为了性能，且 ip2proxy 通常是连续段，这里暂时略过严格检查，假设 LIMIT 1 命中就是对的
 
+	log.Printf("[Debug] IP2Proxy Matched: Query=%s Range=[%s, -] ISP=%s", ipStr, ipFrom.String, isp.String)
+
 	res := &ip2ProxyRaw{
 		CountryCode: cc.String,
 		Country:     cn.String,
