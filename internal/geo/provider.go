@@ -290,8 +290,6 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 	// 字符串比较：ipFrom ("000...100") > ipStr ("000...099") -> 显然不匹配
 	if ipFrom.Valid {
 		if ipFrom.String > ipStr {
-			log.Printf("[Debug] Gap detected: MatchFrom(%s) > Query(%s). Diff=%d",
-				ipFrom.String, ipStr, len(ipFrom.String)-len(ipStr))
 			return nil
 		}
 	}
@@ -299,8 +297,6 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 	// 检查结果是否真的包含该 IP (处理数据空洞)
 	// 在生产环境中，应该再查一次 ip_from 验证 ip_num >= ip_from
 	// 但为了性能，且 ip2proxy 通常是连续段，这里暂时略过严格检查，假设 LIMIT 1 命中就是对的
-
-	log.Printf("[Debug] IP2Proxy Matched: Query=%s Range=[%s, -] ISP=%s", ipStr, ipFrom.String, isp.String)
 
 	res := &ip2ProxyRaw{
 		CountryCode: cc.String,
