@@ -280,7 +280,7 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 	)
 
 	if err != nil {
-		// log.Printf("SQL Debug: %v", err) // 调试用
+		log.Printf("SQL Debug: %v", err) // 调试用
 		return nil
 	}
 
