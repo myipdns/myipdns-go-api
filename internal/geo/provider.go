@@ -86,12 +86,13 @@ func NewProvider(cityPath, asnPath, ip2proxyPath string) (*Provider, error) {
 
 			// [优化] 预编译 SQL 语句
 			// 针对 TEXT 列的 >= 比较，索引扫描更高效
+			// [Refactor] 使用标准范围查询 ip_from <= IP <= ip_to
 			query := `
-		SELECT ip_from, country_code, country_name, region, city, isp, domain, 
+		SELECT country_code, country_name, region, city, isp, domain, 
 		       usage_type, asn, as_name, threat, provider, fraud_score, proxy_type
 		FROM ip2proxy 
 		INDEXED BY idx_ip_to 
-		WHERE ip_to >= ? 
+		WHERE ip_to >= ? AND ip_from <= ?
 		ORDER BY ip_to ASC 
 		LIMIT 1
 	`
@@ -271,27 +272,21 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 		ipStr = strings.Repeat("0", 39-len(ipStr)) + ipStr
 	}
 
-	var ipFrom, cc, cn, reg, city, isp, dom, usage, asnStr, asName, threat, prov, pType sql.NullString
+	var cc, cn, reg, city, isp, dom, usage, asnStr, asName, threat, prov, pType sql.NullString
 	var fScore sql.NullInt32
 
 	// 使用预编译语句查询
-	err := p.stmt.QueryRow(ipStr).Scan(
-		&ipFrom, &cc, &cn, &reg, &city, &isp, &dom, &usage, &asnStr, &asName, &threat, &prov, &fScore, &pType,
+	// 传入两次 ipStr，对应 WHERE ip_to >= ? AND ip_from <= ?
+	err := p.stmt.QueryRow(ipStr, ipStr).Scan(
+		&cc, &cn, &reg, &city, &isp, &dom, &usage, &asnStr, &asName, &threat, &prov, &fScore, &pType,
 	)
 
 	if err != nil {
-		log.Printf("SQL Debug: %v", err) // 调试用
-		return nil
-	}
-
-	// [Fix] 验证 ip_from <= ipStr
-	// 因为我们只用了 ip_to >= ipStr，如果 IP 落在两个段之间的空洞里，
-	// 数据库会返回 下一段 (Next Range)，导致结果错误。
-	// 字符串比较：ipFrom ("000...100") > ipStr ("000...099") -> 显然不匹配
-	if ipFrom.Valid {
-		if ipFrom.String > ipStr {
-			return nil
+		if err != sql.ErrNoRows {
+			log.Printf("SQL Debug: %v", err)
 		}
+		// ErrNoRows 正常情况，说明没查到（空洞）
+		return nil
 	}
 
 	// 检查结果是否真的包含该 IP (处理数据空洞)
