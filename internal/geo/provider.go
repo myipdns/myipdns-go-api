@@ -99,16 +99,6 @@ func NewProvider(cityPath, asnPath, ip2proxyPath string) (*Provider, error) {
 			if err != nil {
 				log.Printf("[Warning] Failed to prepare IP2Proxy query: %v", err)
 			}
-
-			// [DEBUG] 启动时打印数据库样本数据，验证格式
-			var sampleFrom, sampleTo, sampleISP string
-			sampleErr := db.QueryRow("SELECT ip_from, ip_to, isp FROM ip2proxy LIMIT 1").Scan(&sampleFrom, &sampleTo, &sampleISP)
-			if sampleErr != nil {
-				log.Printf("[DEBUG] DB Sample Query Error: %v", sampleErr)
-			} else {
-				log.Printf("[DEBUG] DB Sample Row: ip_from=%s (len=%d), ip_to=%s (len=%d), isp=%s",
-					sampleFrom, len(sampleFrom), sampleTo, len(sampleTo), sampleISP)
-			}
 		}
 	}
 
@@ -281,9 +271,6 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 		ipStr = strings.Repeat("0", 39-len(ipStr)) + ipStr
 	}
 
-	// [DEBUG] 打印查询参数
-	log.Printf("[DEBUG] IP2Proxy Query: OriginalIP=%s, PaddedInt=%s (len=%d)", ip.String(), ipStr, len(ipStr))
-
 	var cc, cn, reg, city, isp, dom, usage, asnStr, asName, threat, prov, pType sql.NullString
 	var fScore sql.NullInt32
 
@@ -294,16 +281,8 @@ func (p *Provider) queryIP2Proxy(ip net.IP) *ip2ProxyRaw {
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Printf("[DEBUG] IP2Proxy Query Result: NO ROWS for %s", ipStr)
-		} else {
-			log.Printf("[DEBUG] IP2Proxy Query Error: %v", err)
-		}
 		return nil
 	}
-
-	// [DEBUG] 打印匹配结果
-	log.Printf("[DEBUG] IP2Proxy Query Result: MATCH! ISP=%s, Country=%s", isp.String, cn.String)
 
 	// 检查结果是否真的包含该 IP (处理数据空洞)
 	// 在生产环境中，应该再查一次 ip_from 验证 ip_num >= ip_from
