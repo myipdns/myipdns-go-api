@@ -162,6 +162,9 @@ print("Creating index (idx_ip_to)...")
 # INDEX on TEXT column works lexicographically (which is what we want for padded strings)
 c.execute('CREATE INDEX idx_ip_to ON ip2proxy(ip_to)')
 
+print("Creating index (idx_ip_from)...")
+c.execute('CREATE INDEX idx_ip_from ON ip2proxy(ip_from)')
+
 conn.close()
 EOF
 

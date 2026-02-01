@@ -91,7 +91,6 @@ func NewProvider(cityPath, asnPath, ip2proxyPath string) (*Provider, error) {
 		SELECT country_code, country_name, region, city, isp, domain, 
 		       usage_type, asn, as_name, threat, provider, fraud_score, proxy_type
 		FROM ip2proxy 
-		INDEXED BY idx_ip_to 
 		WHERE ip_to >= ? AND ip_from <= ?
 		ORDER BY ip_to ASC 
 		LIMIT 1
